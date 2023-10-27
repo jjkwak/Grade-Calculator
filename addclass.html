@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="chatgpt.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add & Edit Classes</title>
+    <style>
+        .class-list {
+            list-style-type: none;
+        }
+
+        .class-list li {
+            margin: 5px;
+            padding: 5px;
+            border: 1px solid #ccc;
+        }
+
+        .edit-input, .edit-button, .delete-button, #classInput, #addClassButton {
+            display: none;
+        }
+
+        .class-button {
+            cursor: pointer;
+            border: none;
+            background-color: transparent;
+            text-decoration: underline;
+            color: blue;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Add & Edit Classes</h2>
+<button id="editSaveButton" onclick="toggleEditMode()">Edit Classes</button>
+
+<input type="text" id="classInput" placeholder="Enter class name">
+<button id="addClassButton" onclick="addClass()">Add Class</button>
+
+<ul class="class-list" id="classList"></ul>
+
+<script>
+    const classList = document.getElementById("classList");
+
+    function toggleEditMode() {
+        const editSaveButton = document.getElementById("editSaveButton");
+        const classInput = document.getElementById("classInput");
+        const addClassButton = document.getElementById("addClassButton");
+        const editButtons = document.querySelectorAll(".edit-button");
+        const deleteButtons = document.querySelectorAll(".delete-button");
+
+        if (editSaveButton.textContent === "Edit Classes") {
+            editSaveButton.textContent = "Save Classes";
+            classInput.style.display = "block";
+            addClassButton.style.display = "block";
+
+            editButtons.forEach(button => button.style.display = "block");
+            deleteButtons.forEach(button => button.style.display = "block");
+        } else {
+            editSaveButton.textContent = "Edit Classes";
+            classInput.style.display = "none";
+            addClassButton.style.display = "none";
+
+            editButtons.forEach(button => button.style.display = "none");
+            deleteButtons.forEach(button => button.style.display = "none");
+        }
+    }
+    
+    function addClass() {
+        const input = document.getElementById("classInput");
+        const className = input.value.trim();
+
+        if (className) {
+            addListItem(className);
+            input.value = "";
+            saveToLocalStorage();
+        }
+    }
+
+    function addListItem(className) {
+        const li = document.createElement("li");
+        li.innerHTML = `
+            <button class="class-button" onclick="openClassDetails('${className}')">${className}</button>
+            <input type="text" class="edit-input" value="${className}">
+            <button class="edit-button" onclick="editClass(this)">Edit</button>
+            <button class="delete-button" onclick="deleteClass(this)">Delete</button>
+        `;
+
+        const editInput = li.querySelector('.edit-input');
+        editInput.addEventListener('blur', function() {
+            autoSave(editInput);
+        });
+
+        classList.appendChild(li);
+    }
+
+    function editClass(button) {
+        const li = button.parentElement;
+        const classButton = li.querySelector(".class-button");
+        const input = li.querySelector(".edit-input");
+        const editButton = li.querySelector(".edit-button");
+        const deleteButton = li.querySelector(".delete-button");
+
+        classButton.style.display = "none";
+        input.style.display = "block";
+        editButton.style.display = "none";
+        deleteButton.style.display = "block";
+        input.focus();
+    }
+
+    function deleteClass(button) {
+        const li = button.parentElement;
+        li.remove();
+        saveToLocalStorage();
+    }
+
+    function autoSave(input) {
+        const li = input.parentElement;
+        const classButton = li.querySelector(".class-button");
+        const editButton = li.querySelector(".edit-button");
+        const deleteButton = li.querySelector(".delete-button");
+
+        const newClassName = input.value.trim();
+
+        if (newClassName) {
+            classButton.textContent = newClassName;
+            classButton.setAttribute("onclick", `openClassDetails('${newClassName}')`);
+        }
+
+        classButton.style.display = "block";
+        input.style.display = "none";
+        editButton.style.display = "block";
+        deleteButton.style.display = "none";
+
+        saveToLocalStorage();
+    }
+
+    function openClassDetails(className) {
+        window.location.href = "classDetails.html";
+    }
+
+    function saveToLocalStorage() {
+        const classes = Array.from(classList.children).map(li => li.querySelector('.class-button').textContent);
+        localStorage.setItem('classes', JSON.stringify(classes));
+    }
+
+    function loadFromLocalStorage() {
+        const savedClasses = JSON.parse(localStorage.getItem('classes'));
+        if (savedClasses) {
+            savedClasses.forEach(className => {
+                addListItem(className);
+            });
+        }
+    }
+
+    loadFromLocalStorage();
+
+</script>
+
+</body>
+</html>
