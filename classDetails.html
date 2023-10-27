@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="chatgpt.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title>Grade Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid #212121;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+        .category-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .category-inputs {
+            display: none; /* Initially hidden */
+        }
+        .home-link {
+            display: inline-block;
+            background-color: #f4f4f4;
+            padding: 10px 15px;
+            text-decoration: none;
+            color: #333;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .home-link:hover {
+            background-color: #ddd;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <nav>
+            <a href="addclass.html" class="home-link">Home</a>
+        </nav>
+
+        <h2 class="GradeCalcTitle">Grade Calculator</h2>
+
+        <h4>Syllabus</h4>
+        <div id="categoriesDiv"></div>
+        
+        <button onclick="showCategoryInputs()">Edit Syllabus</button>
+        <div class="category-inputs">
+            <input type="text" id="newCategoryName" placeholder="Category Name" onfocus="this.value=''">
+            <input type="number" id="newCategoryWeight" placeholder="Weight %" max="100" min="0" onfocus="this.value=''">
+            <button onclick="addCategory()">Add Category</button>
+            <button onclick="hideCategoryInputs()">Hide Syllabus</button>
+        </div>
+
+        <h4>Add Assignments</h4>
+        <table id="assignments">
+            <tr>
+                <th>Name</th>
+                <th>Score</th>
+                <th>Total Possible</th>
+                <th>Category</th>
+                <th>Action</th>
+            </tr>
+        </table>
+        <input type="text" id="name" placeholder="Assignment Name" onfocus="this.value=''">
+        <input type="number" id="actualScore" placeholder="Actual Score" min="0" onfocus="this.value=''">
+        <input type="number" id="totalScore" placeholder="Total Possible Score" min="1" onfocus="this.value=''">
+        <select id="categorySelect"></select>
+        <button onclick="addAssignment()">Add Assignment</button>
+
+        <h4>Final Grade</h4>
+        <p id="result"></p>
+    </div>
+
+    <script>
+        const categories = {};
+        const assignments = [];
+
+        function loadFromStorage() {
+            // Load categories
+            const storedCategories = JSON.parse(localStorage.getItem('categories'));
+            if (storedCategories) {
+                for (const categoryName in storedCategories) {
+                    const categoryWeight = storedCategories[categoryName];
+                    categories[categoryName] = categoryWeight;
+
+                    renderCategory(categoryName, categoryWeight);
+                }
+            }
+
+            // Load assignments
+            const storedAssignments = JSON.parse(localStorage.getItem('assignments'));
+            if (storedAssignments) {
+                for (const assignment of storedAssignments) {
+                    assignments.push(assignment);
+                    renderAssignment(assignment);
+                }
+            }
+        }
+
+        function renderCategory(categoryName, categoryWeight) {
+            const div = document.getElementById("categoriesDiv");
+            const categoryDiv = document.createElement("div");
+            categoryDiv.className = 'category-item';
+            categoryDiv.innerHTML = `${categoryName}: ${categoryWeight}% <button onclick="deleteCategory('${categoryName}')">Delete</button>`;
+            div.appendChild(categoryDiv);
+
+            const select = document.getElementById("categorySelect");
+            const option = document.createElement("option");
+            option.value = categoryName;
+            option.text = categoryName;
+            select.appendChild(option);
+        }
+
+        function renderAssignment(assignment) {
+            const table = document.getElementById("assignments");
+            const row = table.insertRow(-1);
+            row.insertCell(0).innerHTML = assignment.name;
+            row.insertCell(1).innerHTML = assignment.actualScore;
+            row.insertCell(2).innerHTML = assignment.totalScore;
+            row.insertCell(3).innerHTML = assignment.category;
+            row.insertCell(4).innerHTML = '<button onclick="deleteAssignment(this)">Delete</button>';
+        }
+
+        function showCategoryInputs() {
+            document.querySelector('.category-inputs').style.display = 'block';
+        }
+
+        function hideCategoryInputs() {
+            document.querySelector('.category-inputs').style.display = 'none';
+        }
+
+        function addCategory() {
+            const categoryName = document.getElementById("newCategoryName").value;
+            const categoryWeight = parseFloat(document.getElementById("newCategoryWeight").value);
+
+            if (categoryName && !isNaN(categoryWeight)) {
+                categories[categoryName] = categoryWeight;
+
+                renderCategory(categoryName, categoryWeight);
+                
+                localStorage.setItem('categories', JSON.stringify(categories));
+                
+                calculateFinalGrade();
+            } else {
+                alert('Please check your category inputs.');
+            }
+        }
+
+        function deleteCategory(categoryName) {
+            delete categories[categoryName];
+
+            const categoryDivs = document.querySelectorAll('.category-item');
+            categoryDivs.forEach(div => {
+                if (div.innerText.includes(categoryName)) {
+                    div.remove();
+                }
+            });
+
+            const select = document.getElementById("categorySelect");
+            for (let i = 0; i < select.options.length; i++) {
+                if (select.options[i].value === categoryName) {
+                    select.remove(i);
+                }
+            }
+
+            localStorage.setItem('categories', JSON.stringify(categories));
+            calculateFinalGrade();
+        }
+
+        function addAssignment() {
+            const name = document.getElementById("name").value;
+            const actualScore = parseFloat(document.getElementById("actualScore").value);
+            const totalScore = parseFloat(document.getElementById("totalScore").value);
+            const category = document.getElementById("categorySelect").value;
+
+            if (name && !isNaN(actualScore) && !isNaN(totalScore)) {
+                const newAssignment = {
+                    name: name,
+                    actualScore: actualScore,
+                    totalScore: totalScore,
+                    category: category
+                };
+
+                assignments.push(newAssignment);
+                renderAssignment(newAssignment);
+                
+                localStorage.setItem('assignments', JSON.stringify(assignments));
+                calculateFinalGrade();
+            } else {
+                alert('Please check your inputs.');
+            }
+        }
+
+        function deleteAssignment(button) {
+            const row = button.parentNode.parentNode;
+            assignments.splice(row.rowIndex - 1, 1);
+            document.getElementById("assignments").deleteRow(row.rowIndex);
+            
+            localStorage.setItem('assignments', JSON.stringify(assignments));
+            calculateFinalGrade();
+        }
+            
+        function calculateFinalGrade() {
+            const table = document.getElementById("assignments");
+            let categoryTotals = {};
+            let categoryActuals = {};
+
+            for (const category in categories) {
+                categoryTotals[category] = 0;
+                categoryActuals[category] = 0;
+            }
+
+            for (let i = 1; i < table.rows.length; i++) {
+                const category = table.rows[i].cells[3].innerText;
+                const actualScore = parseFloat(table.rows[i].cells[1].innerText);
+                const totalScore = parseFloat(table.rows[i].cells[2].innerText);
+                categoryActuals[category] += actualScore;
+                categoryTotals[category] += totalScore;
+            }
+
+            let finalScore = 0;
+            let totalWeight = 0;
+            for (const category in categories) {
+                if (categoryTotals[category] > 0) {
+                    totalWeight += categories[category];
+                }
+            }
+
+            for (const category in categories) {
+                const averageCategoryScore = categoryActuals[category] / categoryTotals[category];
+                if (categoryTotals[category] > 0) {
+                    finalScore += averageCategoryScore * (categories[category] / totalWeight);
+                }
+            }
+            finalScore *= 100;
+
+            const resultElement = document.getElementById("result");
+            resultElement.textContent = finalScore.toFixed(2) + "% - ";
+            if (finalScore >= 90) {
+                resultElement.innerHTML += "<span style='color:green;'>A</span>";
+            } else if (finalScore >= 80) {
+                resultElement.innerHTML += "<span style='color:blue;'>B</span>";
+            } else if (finalScore >= 70) {
+                resultElement.innerHTML += "<span style='color:orange;'>C</span>";
+            } else if (finalScore >= 60) {
+                resultElement.innerHTML += "<span style='color:purple;'>D</span>";
+            } else {
+                resultElement.innerHTML += "<span style='color:red;'>F</span>";
+            }
+        }
+
+        loadCategoriesFromStorage();  // Call the function to load categories when the page loads
+
+    </script>
+</body>
+
+</html>
